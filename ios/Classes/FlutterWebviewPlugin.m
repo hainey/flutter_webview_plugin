@@ -143,6 +143,8 @@ static NSString *const CHANNEL_NAME = @"flutter_webview_plugin";
     self.webview.scrollView.showsHorizontalScrollIndicator = [scrollBar boolValue];
     self.webview.scrollView.showsVerticalScrollIndicator = [scrollBar boolValue];
 
+    self.webview.allowsLinkPreview = false;
+    
     if (@available(iOS 9.0, *)) {
         if (userAgent != (id)[NSNull null]) {
             self.webview.customUserAgent = userAgent;
