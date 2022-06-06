@@ -112,6 +112,8 @@ class _MyHomePageState extends State<MyHomePage> {
   StreamSubscription<double> _onScrollYChanged;
 
   StreamSubscription<double> _onScrollXChanged;
+  
+  StreamSubscription<DownloadStartRequest> _onDownloadStart;
 
   final _urlCtrl = TextEditingController(text: selectedUrl);
 
@@ -176,6 +178,15 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
 
+    _onDownloadStart =
+        flutterWebViewPlugin._onDownloadStart.listen((DownloadStartRequest request) {
+      if (mounted) {
+        setState(() {
+          _history.add('_onDownloadStart: ${request.url}');
+        });
+      }
+    });
+
     _onStateChanged =
         flutterWebViewPlugin.onStateChanged.listen((WebViewStateChanged state) {
       if (mounted) {
@@ -205,6 +216,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _onProgressChanged.cancel();
     _onScrollXChanged.cancel();
     _onScrollYChanged.cancel();
+    _onDownloadStart.cancel();
 
     flutterWebViewPlugin.dispose();
 

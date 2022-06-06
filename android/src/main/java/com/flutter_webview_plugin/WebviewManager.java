@@ -14,10 +14,12 @@ import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.SslErrorHandler;
+import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.DownloadListener;
 import android.widget.FrameLayout;
 import android.provider.MediaStore;
 
@@ -37,6 +39,8 @@ import java.text.SimpleDateFormat;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
+
+import android.util.Log;
 
 import static android.app.Activity.RESULT_OK;
 
@@ -161,6 +165,22 @@ class WebviewManager {
                 return false;
             }
         });
+		webView.setDownloadListener(new DownloadListener() {
+		  @Override
+		  public void onDownloadStart(String url, String userAgent,
+		          String contentDisposition, String mimeType, long contentLength) {
+		      DownloadStartRequest downloadStartRequest = new DownloadStartRequest(
+		        url,
+		        userAgent,
+		        contentDisposition,
+		        mimeType,
+		        contentLength,
+		        URLUtil.guessFileName(url, contentDisposition, mimeType),
+		        null
+		      );
+		      FlutterWebviewPlugin.channel.invokeMethod("onDownloadStart", downloadStartRequest.toMap());
+		  }
+		});    	
 
         ((ObservableWebView) webView).setOnScrollChangedCallback(new ObservableWebView.OnScrollChangedCallback() {
             public void onScroll(int x, int y, int oldx, int oldy) {
@@ -398,6 +418,9 @@ class WebviewManager {
         webView.getSettings().setAllowUniversalAccessFromFileURLs(allowFileURLs);
 
         webView.getSettings().setUseWideViewPort(useWideViewPort);
+    	
+    	webView.getSettings().setDomStorageEnabled(true);
+    	webView.getSettings().setDatabaseEnabled(true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             webView.getSettings().setMediaPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture);
@@ -554,4 +577,145 @@ class WebviewManager {
             webView.stopLoading();
         }
     }
+	
+	void getAllCookies(MethodCall call, final MethodChannel.Result result){
+        String url = call.argument("url");
+        CookieManager cookieManager = CookieManager.getInstance();
+        String cookieStr = cookieManager.getCookie(url);
+        result.success(cookieStr);
+	}
+	
 }
+
+
+class DownloadStartRequest {
+  
+  private String url;
+  private String userAgent;
+  private String contentDisposition;
+  private String mimeType;
+  private long contentLength;
+  private String suggestedFilename;
+  private String textEncodingName;
+
+  public DownloadStartRequest(String url, String userAgent, String contentDisposition, String mimeType, long contentLength, String suggestedFilename, String textEncodingName) {
+    this.url = url;
+    this.userAgent = userAgent;
+    this.contentDisposition = contentDisposition;
+    this.mimeType = mimeType;
+    this.contentLength = contentLength;
+    this.suggestedFilename = suggestedFilename;
+    this.textEncodingName = textEncodingName;
+  }
+
+  public Map<String, Object> toMap() {
+    Map<String, Object> obj = new HashMap<>();
+    obj.put("url", url);
+    obj.put("userAgent", userAgent);
+    obj.put("contentDisposition", contentDisposition);
+    obj.put("mimeType", mimeType);
+    obj.put("contentLength", contentLength);
+    obj.put("suggestedFilename", suggestedFilename);
+    obj.put("textEncodingName", textEncodingName);
+    return obj;
+  }
+
+  public String getUrl() {
+    return url;
+  }
+
+  public void setUrl(String url) {
+    this.url = url;
+  }
+
+  public String getUserAgent() {
+    return userAgent;
+  }
+
+  public void setUserAgent(String userAgent) {
+    this.userAgent = userAgent;
+  }
+
+  public String getContentDisposition() {
+    return contentDisposition;
+  }
+
+  public void setContentDisposition(String contentDisposition) {
+    this.contentDisposition = contentDisposition;
+  }
+
+  public String getMimeType() {
+    return mimeType;
+  }
+
+  public void setMimeType(String mimeType) {
+    this.mimeType = mimeType;
+  }
+
+  public long getContentLength() {
+    return contentLength;
+  }
+
+  public void setContentLength(long contentLength) {
+    this.contentLength = contentLength;
+  }
+
+  public String getSuggestedFilename() {
+    return suggestedFilename;
+  }
+
+  public void setSuggestedFilename(String suggestedFilename) {
+    this.suggestedFilename = suggestedFilename;
+  }
+
+  public String getTextEncodingName() {
+    return textEncodingName;
+  }
+
+  public void setTextEncodingName(String textEncodingName) {
+    this.textEncodingName = textEncodingName;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    DownloadStartRequest that = (DownloadStartRequest) o;
+
+    if (contentLength != that.contentLength) return false;
+    if (!url.equals(that.url)) return false;
+    if (!userAgent.equals(that.userAgent)) return false;
+    if (!contentDisposition.equals(that.contentDisposition)) return false;
+    if (!mimeType.equals(that.mimeType)) return false;
+    if (suggestedFilename != null ? !suggestedFilename.equals(that.suggestedFilename) : that.suggestedFilename != null)
+      return false;
+    return textEncodingName != null ? textEncodingName.equals(that.textEncodingName) : that.textEncodingName == null;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = url.hashCode();
+    result = 31 * result + userAgent.hashCode();
+    result = 31 * result + contentDisposition.hashCode();
+    result = 31 * result + mimeType.hashCode();
+    result = 31 * result + (int) (contentLength ^ (contentLength >>> 32));
+    result = 31 * result + (suggestedFilename != null ? suggestedFilename.hashCode() : 0);
+    result = 31 * result + (textEncodingName != null ? textEncodingName.hashCode() : 0);
+    return result;
+  }
+
+  @Override
+  public String toString() {
+    return "DownloadStartRequest{" +
+            "url='" + url + '\'' +
+            ", userAgent='" + userAgent + '\'' +
+            ", contentDisposition='" + contentDisposition + '\'' +
+            ", mimeType='" + mimeType + '\'' +
+            ", contentLength=" + contentLength +
+            ", suggestedFilename='" + suggestedFilename + '\'' +
+            ", textEncodingName='" + textEncodingName + '\'' +
+            '}';
+  }
+}
+  

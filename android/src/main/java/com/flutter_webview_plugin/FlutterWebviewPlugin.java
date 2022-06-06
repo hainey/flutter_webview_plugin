@@ -99,7 +99,10 @@ public class FlutterWebviewPlugin implements FlutterPlugin, ActivityAware, Metho
             case "cleanCache":
                 cleanCache(result);
                 break;
-            default:
+            case "getAllCookies":
+                getAllCookies(call,result);
+                break;
+			default:
                 result.notImplemented();
                 break;
         }
@@ -111,6 +114,12 @@ public class FlutterWebviewPlugin implements FlutterPlugin, ActivityAware, Metho
         result.success(null);
     }
 
+	private void getAllCookies(MethodCall call, final MethodChannel.Result result){
+        if (webViewManager != null){
+            webViewManager.getAllCookies(call,result);
+        }
+	}
+	
     void openUrl(MethodCall call, MethodChannel.Result result) {
         boolean hidden = call.argument("hidden");
         String url = call.argument("url");
@@ -316,7 +325,7 @@ public class FlutterWebviewPlugin implements FlutterPlugin, ActivityAware, Metho
         }
         result.success(null);
     }
-
+	
     private int dp2px(Context context, float dp) {
         final float scale = context.getResources().getDisplayMetrics().density;
         return (int) (dp * scale + 0.5f);

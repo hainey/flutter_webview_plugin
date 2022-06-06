@@ -42,6 +42,7 @@ class FlutterWebviewPlugin {
   final _onProgressChanged = new StreamController<double>.broadcast();
   final _onHttpError = StreamController<WebViewHttpError>.broadcast();
   final _onPostMessage = StreamController<JavascriptMessage>.broadcast();
+  final _onDownloadStart = StreamController<DownloadStartRequest>.broadcast();
 
   final Map<String, JavascriptChannel> _javascriptChannels =
       // ignoring warning as min SDK version doesn't support collection literals yet
@@ -83,6 +84,13 @@ class FlutterWebviewPlugin {
         _handleJavascriptChannelMessage(
             call.arguments['channel'], call.arguments['message']);
         break;
+      case 'onDownloadStart':
+        _onDownloadStart.add(
+          DownloadStartRequest.fromMap(
+            Map<String, dynamic>.from(call.arguments),
+          ),
+        );
+        break;
     }
   }
 
@@ -110,6 +118,8 @@ class FlutterWebviewPlugin {
   Stream<double> get onScrollXChanged => _onScrollXChanged.stream;
 
   Stream<WebViewHttpError> get onHttpError => _onHttpError.stream;
+  
+  Stream<DownloadStartRequest> get onDownloadStart => _onDownloadStart.stream;
 
   /// Start the Webview with [url]
   /// - [headers] specify additional HTTP headers
@@ -292,6 +302,7 @@ class FlutterWebviewPlugin {
     _onScrollYChanged.close();
     _onHttpError.close();
     _onPostMessage.close();
+    _onDownloadStart.close();
     _instance = null;
   }
 
@@ -300,7 +311,7 @@ class FlutterWebviewPlugin {
     final cookies = <String, String>{};
 
     if (cookiesString?.isNotEmpty == true) {
-      cookiesString.split(';').forEach((String cookie) {
+      cookiesString.split('; ').forEach((String cookie) {
         final split = cookie.split('=');
         cookies[split[0]] = split[1];
       });
@@ -319,6 +330,11 @@ class FlutterWebviewPlugin {
       'height': rect.height,
     };
     await _channel.invokeMethod('resize', args);
+  }
+  
+  Future<String> getAllCookies(String url) async {
+    final res = await _channel.invokeMethod('getAllCookies', {'url': url});
+    return res;
   }
 
   Set<String> _extractJavascriptChannelNames(Set<JavascriptChannel> channels) {
@@ -377,4 +393,73 @@ class WebViewHttpError {
 
   final String url;
   final String code;
+}
+
+///Class representing a download request of the WebView used by the event [WebView.onDownloadStartRequest].
+class DownloadStartRequest {
+  ///The full url to the content that should be downloaded.
+  Uri url;
+
+  ///the user agent to be used for the download.
+  String userAgent;
+
+  ///Content-disposition http header, if present.
+  String contentDisposition;
+
+  ///The mimetype of the content reported by the server.
+  String mimeType;
+
+  ///The file size reported by the server.
+  int contentLength;
+
+  ///A suggested filename to use if saving the resource to disk.
+  String suggestedFilename;
+
+  ///The name of the text encoding of the receiver, or `null` if no text encoding was specified.
+  String textEncodingName;
+
+  DownloadStartRequest(
+      {this.url,
+      this.userAgent,
+      this.contentDisposition,
+      this.mimeType,
+      this.contentLength,
+      this.suggestedFilename,
+      this.textEncodingName});
+
+  static DownloadStartRequest fromMap(Map<String, dynamic> map) {
+    if (map == null) {
+      return null;
+    }
+
+    return DownloadStartRequest(
+        url: Uri.parse(map["url"]),
+        userAgent: map["userAgent"],
+        contentDisposition: map["contentDisposition"],
+        mimeType: map["mimeType"],
+        contentLength: map["contentLength"],
+        suggestedFilename: map["suggestedFilename"],
+        textEncodingName: map["textEncodingName"]);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      "url": url.toString(),
+      "userAgent": userAgent,
+      "contentDisposition": contentDisposition,
+      "mimeType": mimeType,
+      "contentLength": contentLength,
+      "suggestedFilename": suggestedFilename,
+      "textEncodingName": textEncodingName
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
